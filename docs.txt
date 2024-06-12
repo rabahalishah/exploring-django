@@ -490,4 +490,60 @@ def contact_view(request, *args, **kwargs):
 {{about_us}} {% endblock content %}
 
 
+*****************Using loop in django templates
+What if we have data coming from the database in the form of a list and then we want to loop over the data. So below is the method you can apply for loop inside django templates:
+// In views.py of pages
 
+from django.shortcuts import render
+from django.http import HttpResponse
+
+# Create your views here.
+
+
+def home_view(request, *args, **kwargs):
+    print("args, kwargs: ", args, kwargs)
+    print("REQUEST: ", request)
+    my_context = {
+        "about_home": "This is my home",
+        "more_information": "This house is located in Los angelas",
+        "my_list": [12, 13, 14, 15] #<-- here is the list that we want to render
+    }
+    return render(request, "home.html", my_context)
+
+
+def contact_view(request, *args, **kwargs):
+    print("args, kwargs: ", args, kwargs)
+    print("REQUEST: ", request)
+    print(args, kwargs)
+    my_context = {
+        "about_us": "This is about us"
+
+    }
+    return render(request, "contact.html", my_context)
+
+
+// In home.html
+
+{% extends 'base.html' %} {% block content %}
+<h1>Home Page</h1>
+<h1>This is home template</h1>
+{{about_home}}
+
+{{more_information}} 
+
+
+
+{{my_list}} 
+
+{% for sub_items in my_list %} //this is how we start loop in django template html page
+<li>
+    {{sub_items}}
+</li>
+{% endfor %} // in django template we also have to close the loop
+
+
+{% endblock content %}
+
+
+
+NOTE: You might have been asking yourself that why we are using django templates and why we are rendering our data using the context and applying loops over it. So lets understand it with a practicle application. In real life the data will be coming from the database via models.py and views.py we handle all our logic stuff and then we pass this data that is coming from the database to the django templates where we can conditionally render it. If there is a case that when we are making our front end using django template. But in most of the cases you will create APIs and then those APIs will be used in you front end applications.
