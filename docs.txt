@@ -1,0 +1,371 @@
+Django Course
+I am using ubuntu as an OS
+
+************Django project setup
+Make sure you have python3 installed. If not the run:
+Installing Python:
+
+sudo apt update
+sudo apt install python3
+python3 --verison
+
+
+Now before installing djagon you have to create a virtual environment. For that you have to install pip
+
+Installing PIP:
+sudo apt update
+sudo apt install python3-pip
+pip3 --verison
+
+Installing virtualenv:
+
+pip3 install virtualenv
+
+
+Now create a folder where you want to create your virtual enviroment:
+
+virtualenv -p python3 .
+
+Activating virtual env:
+
+source ./bin/activate
+
+Installing Django:
+
+pip3 install django
+django-admin --version
+
+now create a src folder and go into the src folder and run:
+
+django-admin startproject myproject .
+
+
+You are done!
+
+
+******************Running the django server
+Go to your project source folder and run: (make sure your vritual env is activate)
+
+python manage.py runserver
+
+**********Settings.py
+
+in your project folder there would be settings.py Here we can set all our settings to the project. Like secret keys and databases etc.
+
+once you had make changes you have to run:
+
+python manage.py migrate
+
+
+************Creating Django Apps/ Django built in apps
+
+You can think apps as the componets. If you would go into the django settings.py you might see the section of installed apps. There you can see already installed apps and you can add third party apps as well.
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+]
+
+Creating a super user:
+
+run:
+python manage.py createsuperuser
+
+then give username, email, password
+
+
+Now go to 	http://127.0.0.1:8000/admin/
+
+and login
+
+Here django has created a user for me and stored it into the database automatically.
+
+
+Uptil now we have explored the following django builtin apps:
+
+'django.contrib.admin',
+'django.contrib.auth',
+
+************Creating custom apps:
+In django we can create as my apps we want. As we have already discussed that in django apps are components which then combine creates a full application. This helps us to keep our logic separated and clean.
+
+you can creat you app like that:
+
+pyhton manage.py startapp your_app_name
+
+after hitting enter you will see in you directory there will be a folder containing several files will be created. Now you can manage all your stuff there. There will be a file called models.py
+Here you will define your models (means you database related stuff). All models you will define here will be map through your database.
+
+
+after doing this you have to put the name of your app that you have created, in the installed apps section:
+
+Now wirte code for you app. Let say I want to create models for my product:
+
+from django.db import models
+
+# Create your models here.
+
+
+class Product(models.Model):
+    title = models.TextField()
+    description = models.TextField()
+    price = models.TextField()
+
+
+
+once you have done with your code. now you have to migrate for that you have to run:
+
+python manage.py makemigrations
+python manage.py migrate
+
+
+NOTE: Whenever we would make any changes in the model of our app we would have to run these following commands every time:
+python manage.py makemigrations
+python manage.py migrate
+
+//In models.py
+from django.db import models
+
+# Create your models here.
+
+
+class Product(models.Model):
+    title = models.TextField()
+    description = models.TextField()
+    price = models.TextField()
+    summary = models.TextField(default='This is a cool product.')
+
+
+
+// in admin.py
+from django.contrib import admin
+
+from .models import Product
+# Register your models here.
+
+
+admin.site.register(Product)
+
+
+
+Now again run:
+python manage.py makemigrations
+python manage.py migrate
+
+
+and go to the django admin http://127.0.0.1:8000/admin/ you will see a new app namely products:
+
+
+***********Adding objects to the model using django shell
+you can run django shell by running:
+
+python manage.py shell
+
+now you will be entered into the a shell:
+
+
+from products.models import Product // this is how you import your models in python shell
+
+Product.objects.all() //this is how you can get all your objects in product model
+
+Product.objects.create(title="another product", description= "another description", price="20.22", summary="another summary") //this is how you create new objects in your model
+
+
+NOTE: Uptil now we have learnt how to setup django projects, leanred about django setitngs and how to create our own django apps. We have also learnt that how to create models and how to import models in admin.py and also learnt about django shell and how to add objects to your model using shell and how to migrate your django app.
+
+Now its time to create a our model more realistic
+
+****************Addings realistic fields to our models (with deleting database):
+Here I am making changes. But before that I have deleted some files from migrations and even deleted my database file and then made changes and then migrated. The whole scenario is simple that I am creating my database and its models again.
+from django.db import models
+
+# Create your models here.
+
+
+class Product(models.Model):
+    title = models.CharField(max_length=120)
+    description = models.TextField(blank=True, null=True)
+    price = models.DecimalField(decimal_places=2, max_digits=10000)
+    summary = models.TextField()
+
+
+
+now agaim run
+
+python manage.py makemigrations
+python manage.py migrate
+
+
+
+************************Making changes to the column without deleting the database:
+from django.db import models
+
+# Create your models here.
+
+
+class Product(models.Model):
+    title = models.CharField(max_length=120)
+    description = models.TextField(blank=True, null=True)
+    price = models.DecimalField(decimal_places=2, max_digits=10000)
+    summary = models.TextField()
+    featured = models.BooleanField() // <--- Added this field
+    
+    
+
+NOTE: Django doesn't know how many objects were already present in the database with already existing 4 properties. What should be the value of the fifth property in already existing objects in database? Here you have to provide a default value. and then you can run:
+
+python manage.py makemigrations
+python manage.py migrate
+
+IMPORTANT: You might have noticed that on evey changes you made and then make migrations. You will see an addition of new file containing the changes you made.
+
+
+*****************Custom pages in django
+You have seen a folder called views. In this page you have define view for your app. lets create a new app and make a custom page
+
+python manage.py startapp pages
+
+Pages folder must be created. Now go to the views.py
+Dont forget to add this pages app in your installed app list of settings.py
+
+// in settings.py:
+
+//...rest of the code
+
+# Application definition
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
+    # My Own app
+
+    'products',
+    'pages',
+]
+
+//...rest of the code
+
+
+// inside views.py of Pages app
+
+from django.shortcuts import render
+from django.http import HttpResponse
+
+# Create your views here.
+
+def home_view():
+    return HttpResponse("<h1>Hello World</h1>")
+
+***Now its time to define url for this page so that we can see this page. 
+For that go to the urls.py folder in your trydjango app
+
+// in urls.py
+
+from django.contrib import admin
+from django.urls import path
+from pages.views import home_view // <--added this line
+
+urlpatterns = [
+    path('', home_view, name='home'), //<--added this line
+    path('admin/', admin.site.urls),
+]
+
+
+NOTE: You can add as many views you want. Lets add another view let say contacts in the pages.views
+
+//in views.py of pages app
+
+from django.shortcuts import render
+from django.http import HttpResponse
+
+# Create your views here.
+
+
+def home_view(request, *args, **kwargs):
+    print("args, kwargs: ", args, kwargs)
+    print("REQUEST: ", request)
+    return HttpResponse("<h1>Hello World</h1>")
+
+
+def contact_view(request, *args, **kwargs):
+    print("args, kwargs: ", args, kwargs)
+    print("REQUEST: ", request)
+    print(args, kwargs)
+    return HttpResponse("<h1>Contact Page</h1>")
+
+
+// In urls.py of trydjango:
+
+from django.contrib import admin
+from django.urls import path
+from pages.views import home_view, contact_view
+
+urlpatterns = [
+    path('', home_view, name='home'),
+    path('contact/', contact_view, name='contact'),
+    path('admin/', admin.site.urls),
+]
+
+
+
+IMPORTANT: Here you have to notice a behaviour that whenever we hit the defined url something is request and the response is given. In our case the response is an html page. We can use this request response to create some desired functions.
+
+
+
+
+************Django Templates
+Creating django templates is simply like creating html files in a "templates" folder which will be located inside source folder. And then giving the address of this folder in templates section of settings.py. And in views now instead of returning httpResponse you have to response render(request, "anyfile.html", {})
+
+//inside views of pages
+from django.shortcuts import render
+
+# Create your views here.
+def home_view(request, *args, **kwargs):
+    print("args, kwargs: ", args, kwargs)
+    print("REQUEST: ", request)
+    return render(request, "home.html", {}) # <--added this lines
+
+
+def contact_view(request, *args, **kwargs):
+    print("args, kwargs: ", args, kwargs)
+    print("REQUEST: ", request)
+    print(args, kwargs)
+
+    return render(request, "contact.html", {}) # <--added this lines
+    
+    
+// now create a templates folder inside src folder and make home.html and contact.html files in it.
+
+//inside settings.py
+//.....rest of this code
+
+import os
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [os.path.join(BASE_DIR, "templates")], #<-- Added this line
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+//.....rest of this code
+
+
+now on hitting the defined urls inside urls.py these templates will render
