@@ -1,9 +1,19 @@
-{% extends 'base.html' %}
-
-{% block content %}
+{% extends 'base.html' %} {% block content %}
 <h1>Home Page</h1>
 <h1>This is home template</h1>
 {{about_home}}
-{{more_information}}
+
+{{more_information}} 
+
+
+
+{{my_list}} 
+
+{% for sub_items in my_list %}
+<li>
+    {{sub_items}}
+</li>
+{% endfor %}
+
 
 {% endblock content %}

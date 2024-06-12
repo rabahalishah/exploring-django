@@ -9,7 +9,8 @@ def home_view(request, *args, **kwargs):
     print("REQUEST: ", request)
     my_context = {
         "about_home": "This is my home",
-        "more_information": "This house is located in Los angelas"
+        "more_information": "This house is located in Los angelas",
+        "my_list": [12, 13, 14, 15]
     }
     return render(request, "home.html", my_context)
 
