@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <header>
+    <title>Django Template inheritance</title>
+  </header>
+  <body>
+      
+      {% include "navBar.html" %}
+
+
+    <h1>This line is from base.html</h1>
+
+    {% block content %}
+    This space inside these wrapper will work as a placeholder
+    {% endblock content %}
+    
+  </body>
+</html>
