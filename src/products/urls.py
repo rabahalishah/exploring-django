@@ -14,14 +14,19 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
-from django.urls import path, include
-from pages.views import home_view, contact_view
+
+from django.urls import path
+from .views import dynamic_lookup_view, dynamic_delete_view, product_list_view, product_create_view, product_detail_view
 
 urlpatterns = [
-    path('products/', include('products.urls')),
+    path('', product_list_view, name='products'),
+    path('create/', product_create_view, name='product_create'),
+    # path('products/<int:my_id>/', product_detail_view, name='product'),
 
-    path('', home_view, name='home'),
-    path('contact/', contact_view, name='contact'),
-    path('admin/', admin.site.urls),
+    # <-- here we are getting id dynamically
+    path('<int:my_id>/', dynamic_lookup_view, name='product'),
+    # path('products/<int:my_id>/update', product_detail_view, name='product'),
+    path('<int:my_id>/delete',
+         dynamic_delete_view, name='product-delete'),
+
 ]

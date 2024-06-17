@@ -10,6 +10,13 @@
 {{my_list}} 
 
 {% for sub_items in my_list %}
+    {% if sub_items == 14 %}
+    <p>14 number detected now adding 20 into it, {{sub_items|add:20}}</p>
+    {% elif sub_items == 1222 %}
+    <p>12 number detected</p>
+    {% else %}
+    <p>Else conditioned run</p>
+    {% endif %}
 <li>
     {{sub_items}}
 </li>
