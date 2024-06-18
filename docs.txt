@@ -547,3 +547,817 @@ def contact_view(request, *args, **kwargs):
 
 
 NOTE: You might have been asking yourself that why we are using django templates and why we are rendering our data using the context and applying loops over it. So lets understand it with a practicle application. In real life the data will be coming from the database via models.py and views.py we handle all our logic stuff and then we pass this data that is coming from the database to the django templates where we can conditionally render it. If there is a case that when we are making our front end using django template. But in most of the cases you will create APIs and then those APIs will be used in you front end applications.
+
+
+***************Conditions in django templates
+
+{% extends 'base.html' %} {% block content %}
+<h1>Home Page</h1>
+<h1>This is home template</h1>
+{{about_home}}
+
+{{more_information}} 
+
+
+
+{{my_list}} 
+
+{% for sub_items in my_list %}
+    {% if sub_items == 1422 %} #<-- If condition started
+    <p>14 number detected</p>  # On this statement becomes true then render this
+    {% elif sub_items == 1222 %}
+    <p>12 number detected</p>
+    {% else %}
+    <p>Else conditioned run</p>
+    {% endif %} 		#<-- If condition ended
+<li>
+    {{sub_items}}
+</li>
+{% endfor %}
+
+
+{% endblock content %}
+
+
+
+*********Django templates built-in tags
+Built-in Filters:
+
+{% extends 'base.html' %} {% block content %}
+<h1>Home Page</h1>
+<h1>This is home template</h1>
+{{about_home}}
+
+{{more_information}} 
+
+
+
+{{my_list}} 
+
+{% for sub_items in my_list %}
+    {% if sub_items == 14 %}
+    <p>14 number detected now adding 20 into it, {{sub_items|add:20}}</p>  #<-- value|add:20 is built in filter that adds 20 or anynumber to the value left to the pipe |
+    {% elif sub_items == 1222 %}
+    <p>12 number detected</p>
+    {% else %}
+    <p>Else conditioned run</p>
+    {% endif %}
+<li>
+    {{sub_items}}
+</li>
+{% endfor %}
+
+
+{% endblock content %}
+
+
+
+********************Retrieving data from the backend
+First of all you must have a model.
+
+// In models.py of product app:
+from django.db import models
+
+# Create your models here.
+
+
+class Product(models.Model):
+    title = models.CharField(max_length=120)
+    description = models.TextField(blank=True, null=True)
+    price = models.DecimalField(decimal_places=2, max_digits=10000)
+    summary = models.TextField()
+    featured = models.BooleanField()
+
+
+
+// In views.py of Product app
+
+from django.shortcuts import render
+from .models import Product     #<-- This is how you will import you models
+
+# Create your views here.
+
+
+def product_detail_view(request):
+    obj = Product.objects.get(id=3)  <-- Here we are selecting our product by using its id and storing it into an obj variable
+    context = {
+        'title': obj.title,
+        'description': obj.description,
+        'price': obj.price,
+        'summary': obj.summary,
+        'featured': obj.featured,
+
+    }
+
+    return render(request, "product/detail.html", context)
+    
+
+
+// In Templates folder create a product folder and inside that create detail.html
+
+{% extends 'base.html' %} {% block content %}
+
+<h3>below data is coming from the database:</h3>
+<h1>{{title}}</h1>
+<p>{{description}}</p>
+<p>{{price}}</p>
+<p>{{summary}}</p>
+<p>{{featured}}</p>
+{% endblock content %}
+
+
+// in urls.py
+
+from django.contrib import admin
+from django.urls import path
+from pages.views import home_view, contact_view
+from products.views import product_detail_view
+
+urlpatterns = [
+    path('', home_view, name='home'),
+    path('contact/', contact_view, name='contact'),
+    path('product/', product_detail_view, name='product'), #<-- defined url
+    path('admin/', admin.site.urls),
+]
+
+
+now search localhost:8000/product
+
+
+*****************Better way to define models data
+
+// In views.py of product ap[:
+from django.shortcuts import render
+from .models import Product
+
+# Create your views here.
+
+
+def product_detail_view(request):
+    obj = Product.objects.get(id=3)
+    context = {
+        'objects': obj
+
+    }
+
+    return render(request, "product/detail.html", context)
+
+// in detail.html
+
+{% extends 'base.html' %} {% block content %}
+
+<h3>below data is coming from the database:</h3>
+<h1>{{objects.title}}</h1>
+<p>{{objects.description}}</p>
+<p>{{objects.price}}</p>
+<p>{{objects.summary}}</p>
+<p>{{objects.featured}}</p>
+
+{% endblock content %}
+
+
+*************How to create a form in django and how to enter data into that model?
+First of all you must have a model:
+
+//In models.py of product app:
+from django.db import models
+
+# Create your models here.
+
+
+class Product(models.Model):
+    title = models.CharField(max_length=120)
+    description = models.TextField(blank=True, null=True)
+    price = models.DecimalField(decimal_places=2, max_digits=10000)
+    summary = models.TextField()
+    featured = models.BooleanField(default=False)
+
+
+//Create a forms.py file
+
+
+from django import forms
+from .models import Product
+
+
+class ProductForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = [    #<-- Here I have added only selective fields. You can add as much as you can from your models.py
+            'title',
+            'description',
+            'price'
+        ]
+
+
+// In views.py
+from django.shortcuts import render
+from .models import Product
+from .forms import ProductForm
+
+# Create your views here.
+
+def product_create_view(request):
+    form = ProductForm(request.POST or None)  #<-- grabbing data from the post request
+    if form.is_valid():  		      #<-- checcking whether the form is valid or not
+        form.save()      		      #<-- after validation saving the form data
+        form = ProductForm()		      #<-- clearing the form state
+
+    context = {
+        'form': form,                         #<-- passing form data once, 
+
+    }
+
+    return render(request, "product/product_create.html", context)
+    
+    
+    
+    
+ 
+ ****************Saving data into database from the raw HTMl form (Bad way to store data in DB):
+ 
+
+// In views.py of Product
+def product_create_view(request):
+    if request.method == 'POST':
+        my_new_title = request.POST.get('title')
+        print(my_new_title)
+        # Product.objects.create(title=my_new_title) #<-- this is how you can store data in database
+
+    context = {}
+
+    return render(request, "product/product_create.html", context)
+    
+    
+// In product_create.html
+{% extends 'base.html' %} {% block content %}
+
+<form action="." method="POST"> {% csrf_token %}  #<-- here in actions we can send our input data to the url entered in the actions e.g actions="http://www.google.com/search"
+  <input placeholder="Enter title" type="text" name="title" />
+  <input  type="submit" value="save" />
+</form>
+{% endblock content %}
+
+
+NOTE: This is not a good way to store data in database. Because here we are not validating the data before saving it into the database. Here we have simply created an HTML form and get that from the request argument.
+
+***************Pure Django forms
+
+// In forms.py of product app
+class RawProductFrom(forms.Form):
+    title = forms.CharField()
+    description = forms.CharField()
+    price = forms.DecimalField()
+    
+    
+// In views.py of product app
+from .forms import RawProductFrom
+from django.shortcuts import render
+from .models import Product
+
+# Django pure forms
+def product_create_view(request):
+    my_form = RawProductFrom() 
+    if request.method == 'POST':
+        my_form = RawProductFrom(request.POST)  #<-- grabbing the post data
+        if my_form.is_valid():
+            print(my_form.cleaned_data)
+
+        Product.objects.create(**my_form.cleaned_data)  #<--passing the cleaned data as an argument ** to the product model
+
+    context = {"form": my_form}
+
+    return render(request, "product/product_create.html", context)    
+    
+// In product_create.html
+
+{% extends 'base.html' %} {% block content %}
+
+<form method="POST">
+  {% csrf_token %} {{ form.as_p}}
+
+  <input type="submit" value="save" />
+</form>
+{% endblock content %}
+
+
+
+******************Form widgets:
+Using form widgets you can apply attributes to your html fields
+// In forms.py
+class RawProductFrom(forms.Form):
+    title = forms.CharField()
+    description = forms.CharField(required=False, widget=forms.Textarea( 
+        attrs={"placeholder": "My Description",
+               "class": "new-class-name",
+               "rows": 20,
+               "columns": 100
+               }))
+    price = forms.DecimalField()
+    
+    
+
+
+
+NOTE: Since we are dealing with pure Django forms so we will be managing our html properties of HTML using django builtin features
+    
+
+********************Django Forms validations
+
+class ProductForm(forms.ModelForm):
+
+    title = forms.CharField()                          #<-- Here we are overriding our title, description and price fields
+    description = forms.CharField(required=False, widget=forms.Textarea(
+        attrs={"placeholder": "My Description",
+               "class": "new-class-name",
+               "rows": 20,
+               "columns": 100
+               }))
+    price = forms.DecimalField()
+
+    class Meta:
+        model = Product
+        fields = [
+            'title',
+            'description',
+            'price'
+        ]
+    # Custom validations <-- here before submitting the form we are checking whether the title contains rabah or not.
+
+    def cleaned_title(self, *args, **kwargs):
+        title = self.cleaned_data.get("title")
+        if not "rabah" in title:
+            raise forms.ValidationError("This is not a valid title")
+        else:
+            return title
+
+*********************Initial value of the form
+
+You can give initial value to the form with the help of using views.py file:
+
+// In views.py of Product app:
+def product_create_view(request):
+    initial_data = {
+        'title': "This is my initial title"
+    }
+
+    form = ProductForm(request.POST or None, initial=initial_data)
+    if form.is_valid():
+        form.save()
+        form = ProductForm()
+
+    context = {
+        'form': form,
+
+    }
+
+    return render(request, "product/product_create.html", context)
+    
+    
+*****************Initial value to a specific object:
+
+def product_create_view(request):
+    initial_data = {
+        'title': "This is my initial title"
+    }
+    obj = Product.objects.get(id=1)
+    form = ProductForm(request.POST or None,
+                       instance=obj, initial=initial_data)  #<--using instance attribute
+    if form.is_valid():
+        form.save()
+        form = ProductForm()
+
+    context = {
+        'form': form,
+    }
+
+    return render(request, "product/product_create.html", context)
+    
+    
+ *******************Dynamic URLS
+ 
+ Dynamic url is very simle. All you have to do some change in the urls.py like below:
+ 
+// In urls.py:
+
+from django.contrib import admin
+from django.urls import path
+
+from products.views import dynamic_lookup_view
+
+urlpatterns = [
+
+    path('product/<int:my_id>/', dynamic_lookup_view, name='dynamic'), # <-- here we are adding my_id a dynamica argument which we can access in our views
+    path('admin/', admin.site.urls),
+]
+
+// In views,py
+
+from django.shortcuts import render
+from .models import Product
+def dynamic_lookup_view(request, my_id): #<-- this my_id argument is coming from dynamic url
+    obj = Product.objects.get(id=my_id)
+    context = {
+        "object": obj
+    }
+    return render(request, "product/product_detail.html", context)
+
+// In product_detail.html
+{% extends 'base.html' %} {% block content %}
+
+<h3>below data is coming from the database:</h3>
+<h1>{{object.title}}</h1>
+<p>{{object.description}}</p>
+<p>{{object.price}}</p>
+<p>{{object.summary}}</p>
+<p>{{object.featured}}</p>
+{% endblock content %}
+
+
+****************Handling page not found
+There are two ways to do that:
+
+1) using  get_object_or_404 from django.shortcuts
+2) Http404 from djnago.http
+
+
+***Method 1:
+from django.shortcuts import render, get_object_or_404
+from .models import Product
+def dynamic_lookup_view(request, my_id): # <-- this my_id argument is coming from dynamic url
+    obj = get_object_or_404(Product, id=my_id)
+    context = {
+        "object": obj
+    }
+    return render(request, "product/product_detail.html", context)
+    
+    
+***Method 2:
+from django.shortcuts import render
+from django.http import Http404
+from .models import Product
+
+def dynamic_lookup_view(request, my_id):
+    try:
+        obj = Product.objects.get(id=my_id)
+    except Product.DoesNotExist:
+        raise Http404
+
+    context = {
+        "object": obj
+    }
+    return render(request, "product/product_detail.html", context)
+
+    
+***************Deleting objects using dynamic url in django:
+// In views.py of product app:
+
+def dynamic_delete_view(request, my_id):
+    obj = get_object_or_404(Product, id=my_id)
+    if request.method == "POST":
+        # confirming post request then deleting the object
+        obj.delete()
+        return redirect('../')
+
+    context = {
+        "object": obj
+    }
+    return render(request, "product/product_delete.html", context)
+    
+    
+ // In product_delete.html
+ 
+ {% extends 'base.html' %} {% block content %}
+<form method="POST">
+  {% csrf_token %}
+  <h1>Do you want to delete this product "{{object.title}}" ?</h1>
+  <p>
+    <input type="submit" value="Yes" />
+    <a href="../">Cancel</a>
+  </p>
+</form>
+
+{% endblock content %}
+
+// In urls.py
+
+from django.contrib import admin
+from django.urls import path
+from products.views import dynamic_lookup_view, dynamic_delete_view, product_detail_view
+
+
+
+urlpatterns = [
+
+    path('product/', product_detail_view, name='product'),
+
+    path('product/<int:my_id>/delete',
+         dynamic_delete_view, name='product-delete'),
+    path('admin/', admin.site.urls),
+]
+
+*************Getitng the list of all objects from the database:
+
+// In views.py in Product
+
+def product_list_view(request):
+    objects_list = Product.objects.all()
+    context = {
+        "object_list": objects_list
+    }
+    return render(request, "product/product_list.html", context)
+    
+// In product_list.html:
+{% extends 'base.html' %} 
+
+{% block content %}
+ {{object_list}} 
+ 
+{% for instance in object_list %}
+<p>{{instance.id}} - {{instance.title}}</p>
+
+{% endfor %} 
+{% endblock content %}
+
+
+// In Urls.py
+urlpatterns = [
+path('allproducts/',product_list_view , name='product'),
+}
+
+
+**********************How to get absolute URL:
+// in models.py
+from django.db import models
+
+# Create your models here.
+
+
+class Product(models.Model):
+    title = models.CharField(max_length=120)
+    description = models.TextField(blank=True, null=True)
+    price = models.DecimalField(decimal_places=2, max_digits=10000)
+    summary = models.TextField()
+    featured = models.BooleanField(default=False)
+
+# Below is the way to get absolute url 
+    def get_absolute_url(self):
+        return f"product/{self.id}/"
+
+
+//In product_list.html
+
+{% extends 'base.html' %} 
+{% block content %} 
+
+{{object_list}} 
+
+{% for instance in object_list %}
+<p>
+  {{instance.id}} - <a href="{{ instance.get_absolute_url }}">{{instance.title}}</a>
+</p>
+
+{% endfor %} 
+{% endblock content %}
+
+
+******************Good practice to make your linked urls dynamic
+from django.db import models
+from django.urls import reverse
+
+# Create your models here.
+
+
+class Product(models.Model):
+    title = models.CharField(max_length=120)
+    description = models.TextField(blank=True, null=True)
+    price = models.DecimalField(decimal_places=2, max_digits=10000)
+    summary = models.TextField()
+    featured = models.BooleanField(default=False)
+
+# Below is the way to get absolute url
+    def get_absolute_url(self):
+        # syntax: reverse("name of url we defined in the path function inside url array in url.py", kwargs={key:value}) 
+        # here key is the variable in the url and value is the dynamic value from the model
+        return reverse("product", kwargs={"my_id": self.id})
+
+
+// In urls.py
+path('product/<int:my_id>/', dynamic_lookup_view, name='product'), #<-- here name='product'
+
+
+// In product_list.html
+
+{% extends 'base.html' %} 
+{% block content %} 
+
+{{object_list}} 
+
+{% for instance in object_list %}
+
+<p>
+  {{instance.id}} - <a href="{{ instance.get_absolute_url }}">{{instance.title}}</a>
+</p>
+
+{% endfor %} 
+{% endblock content %}
+
+
+NOTE: here instance.get_absolute_url will call get_absolute_url defined in models.py function. This will add redirect to product/selected_id
+
+
+*************************Refactoring the urls: Creating separate urls.py for products app
+Here we are going to create separate urls.py for our Product app to make it completely useable component:
+
+
+// Inside urls.py of product app:
+from django.urls import path
+from .views import dynamic_lookup_view, dynamic_delete_view, product_list_view, product_create_view, product_detail_view
+
+urlpatterns = [
+    path('', product_list_view, name='products'),
+    path('create/', product_create_view, name='product_create'),
+    path('<int:my_id>/', dynamic_lookup_view, name='product'),     # <-- here we are getting id dynamically
+    path('<int:my_id>/delete',
+         dynamic_delete_view, name='product-delete'),
+]
+
+
+
+NOTE: Since we have extracted our code from urls.py of the main project to the urls.py of product app so we have to make some link it with the original urls.py of the main product.
+
+
+// Im urls.py of trydjango app:
+
+from django.contrib import admin
+from django.urls import path, include
+from pages.views import home_view, contact_view
+
+urlpatterns = [
+    path('products/', include('products.urls')), #<-- include is the keyword that we used to include another URLconf
+
+    path('', home_view, name='home'),
+    path('contact/', contact_view, name='contact'),
+    path('admin/', admin.site.urls),
+]
+
+
+**********Class based views:
+Class based views are some how seems more complex than function based views. The reason is that many of the things are automated because class based views are inherite of other django built in classes. Therefore, a good knowledge is required while creating class based views:
+
+// models.py of blog app:
+from django.db import models
+from django.urls import reverse
+
+# Create your models here.
+
+
+class Article(models.Model):
+    title = models.CharField(max_length=120)
+    content = models.TextField()
+    active = models.BooleanField(default=True)
+
+    def get_absolute_url(self):
+        return reverse("article", kwargs={"pk": self.id})
+
+// forms.py of blog app:
+
+from django import forms
+from .models import Article
+
+
+class ArticleModelForm(forms.ModelForm):
+    class Meta:
+        model = Article
+        fields = [
+            'title',
+            'content',
+            'active'
+        ]
+// views.py of blog app:
+
+from django.db.models.base import Model as Model
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
+from django.views.generic import (
+    CreateView,
+    DetailView,
+    ListView,
+    UpdateView,
+    DeleteView
+)
+
+from .models import Article
+from .forms import ArticleModelForm
+
+# Create your views here.
+
+
+class AritcleListView(ListView):
+    # here we are overriding our template names. Cuz by default django wants
+    # name something like like that  <blog>/<modelName>_list.html but we want to use our custom so:
+    template_name = 'articles/article_list.html'
+    queryset = Article.objects.all()
+    # here I do not have to do render, do not have to write template name etc. Just because of django builtin
+    # ListView. I have inherite Listview inside my ArticleListView class
+
+
+class AritcleDetailView(DetailView):
+    template_name = 'articles/article_detail.html'
+
+    def get_object(self):
+        # <-- This is how we grab id from the url in class based views
+        id_ = self.kwargs.get("pk")
+        return get_object_or_404(Article, id=id_)
+
+# note: In class based views the class views are inherite from other classes therefore, we have to override the things
+# like we have done above by using get_object()
+
+
+class AritcleCreateView(CreateView):
+    template_name = 'articles/article_create.html'
+    form_class = ArticleModelForm
+    queryset = Article.objects.all()
+
+    def form_valid(self, form):
+        print(form.cleaned_data)
+        return super().form_valid(form)
+
+
+class AritcleUpdateView(UpdateView):
+    template_name = 'articles/article_create.html'
+    form_class = ArticleModelForm
+    queryset = Article.objects.all()
+
+    def get_object(self):
+        id_ = self.kwargs.get("pk")
+        return get_object_or_404(Article, id=id_)
+
+    def form_valid(self, form):
+        print(form.cleaned_data)
+        return super().form_valid(form)
+
+
+class AritcleDeleteView(DeleteView):
+    template_name = 'articles/article_delete.html'
+
+    def get_object(self):
+        # <-- This is how we grab id from the url in class based views
+        id_ = self.kwargs.get("pk")
+        return get_object_or_404(Article, id=id_)
+    def get_success_url(self) :
+        return reverse('article-list')
+        
+**********************get and post method on classes:
+Class based views are mostly used as they provide inheritance features. If one class is inherited in other class then all the  methods inside that class will be called which we dont have to call separately:
+
+from django.views import View
+from .forms import CourseModelForm
+
+class CourseCreateView(View):
+
+	template_name = "course/course_create.html"
+	
+	def get(self, request, *args, **kwargs):
+		form = CourseModelForm()
+		context: {"form": form}
+		retrun render(request, self.template_name, context)
+	
+	
+	def post(self, request, *args, **kwargs):
+		form = CourseModelForm(request.POST)
+		if form.is_valid():
+			form.save()
+			form = CourseModelForm() #<-- this will just clear fields after submitting the form
+		context: {"form": form}
+		return render(request, self.template_name, context)
+		
+	
+
+***************Raw validations on class based views:
+from django import forms
+from .models import Article
+
+
+class ArticleModelForm(forms.ModelForm):
+    class Meta:
+        model = Article
+        fields = [
+            'title',
+            'content',
+            'active'
+        ]
+        
+    # syntax:def clean_<your_field_name>():
+
+    def clean_title():
+       titile = self.cleaned_data.get('title')
+       if title.lower() == 'abc':
+       	   raise forms.validationError("This is not a valid title)
+       return title
+       	   
+       
+
+
+
+
