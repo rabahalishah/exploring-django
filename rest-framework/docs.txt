@@ -91,6 +91,15 @@ NOTE: Json and python dictionaries are almost same
 // HTTP API you will get HTML
 
 
+***********Create admin user:
+
+> python manage.py createsuperuser
+
+NOTE: If your apps are not showing in your admin user page then add the code looking like below in your admin.py:
+
+from myapp.models import Your_mode_Name
+admin.site.register(Your_mode_Name)
+
 *************Creating our First REST API:
 
 // In views.js of api app:
@@ -553,13 +562,307 @@ This is prove that our data is passing through the model and its validating ther
 
 
 
+*********************Rest framework generic class based views for retrieving data:
+// In views.py:
+from rest_framework import generics
+from .models import Product
+from .serializers import ProductSerializer
+
+# Create your views here.
+
+
+# endpoint: api/products/id
+class ProductDetailAPIView(generics.RetrieveAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+    # NOTE: Terms like queryset and serializer_class are generics terms we have to follow this standard
+    
+
+
+// In urls.py of product app:
+
+
+from django.urls import path
+from .views import ProductDetailAPIView
+
+
+urlpatterns = [
+    path('<int:pk>/', ProductDetailAPIView.as_view()),
+
+]
+
+
+// In urls.py of our main app that is cfehome:
+
+from django.contrib import admin
+from django.urls import path, include
+
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('api.urls')),
+    path('api/products/', include('products.urls')),
+]
 
 
 
+NOTE: Generic views requires more knowledge about them as you have to follow some standard rules and naming convenstions such as queryset and serializer_class
 
 
 
+*****************Generics create view API:
+// in views.py
 
+from rest_framework import generics
+from .models import Product
+from .serializers import ProductSerializer
+
+# Create your views here.
+
+# endpoint: api/products/
+
+
+class ProductCreateAPIView(generics.CreateAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+    #  the below is the built in method and will only be called if generics is createAPIView and here you can perform any action on the data that is ocming from the frontend
+    def perform_create(self, serializer):
+        print(serializer.validated_data)
+        title = serializer.validated_data.get('title')
+        content = serializer.validated_data.get('content') or None
+        if content is None:
+            content = title
+        serializer.save(content=content)
+
+// In urls.py of product app:
+
+from django.urls import path
+from .views import ProductDetailAPIView, ProductCreateAPIView
+
+
+urlpatterns = [
+    path('', ProductCreateAPIView.as_view()), #<-- added this
+    path('<int:pk>/', ProductDetailAPIView.as_view()),
+
+]
+
+
+// In details.py;
+import requests
+
+endpoint = "http://localhost:8000/api/products/"
+
+data = {
+    "title": "Product withou content. This will be the content too"
+}
+response_data = requests.post(endpoint, json=data)
+
+
+print(response_data.json())
+
+
+****************Product List API view generic that will return the a list containing all our products:
+There are actually two ways to doing it.
+
+1) is to create a new class view for this separately like this:
+class ProductListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    
+    
+And we will use GET method on it.
+
+
+2) Recommended way: Since this method and CreateAPIView methods both are exactly same but with the difference of Http mehtod by which they are called. So its better to combine then like below:
+class ProductListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+    #  the below is the built in method and will only be called if generics is createAPIView
+    def perform_create(self, serializer):
+        print(serializer.validated_data)
+        title = serializer.validated_data.get('title')
+        content = serializer.validated_data.get('content') or None
+        if content is None:
+            content = title
+        serializer.save(content=content)
+        
+        
+ Url: http://localhost:8000/api/products/
+ 
+ if I would make get request on this url I will get all my products but I would make post request along with my json data my product will be created.
+ 
+ 
+******************Creating a single function based view that handles create product, get a list of all products, and product detail view:
+This is how we can do all operations like creating the product, getting a single product and getting the list of all products:
+
+NOTE: Remember that there is no restriction of naming conventin in function based views as in class based views many things are automated but you have a great knowledge of its standard naming converions
+
+// In views.py of product app:
+
+# Handling both Get and post request.
+
+@api_view(['GET', 'POST'])
+def product_alt_view(request, pk=None, *args, **kwagrs):
+
+    if request.method == 'GET':
+        if pk is not None:
+            # If primary key exists then it willl act as detail view
+
+            # unlike classbased views, in function based views we have to manually handle  page not found:
+            obj = get_object_or_404(Product, pk=pk)
+            data = ProductSerializer(obj, many=False).data
+            # echoing/sending back the created data to the user
+            return Response(data)
+
+        # below code will run if primary key does not exists then this will act as get a list of all products
+        queryset = Product.objects.all()
+        data = ProductSerializer(queryset, many=True).data
+        # echoing/sending back the created data to the user
+        return Response(data)
+
+    if request.method == 'POST':
+        # If method is post this will act as product create view
+        serializer = ProductSerializer(data=request.data)
+
+        # below we are handling that if content doest not exists then fill it as the title (This is completely an optional step)
+
+        # updating the content value
+        if serializer.is_valid(raise_exception=True):
+            title = serializer.validated_data.get('title')
+            content = serializer.validated_data.get('content') or None
+            if content is None:
+                content = title
+            serializer.save(content=content)
+
+        if serializer.is_valid(raise_exception=True):
+            instance = serializer.save()
+            print("instance from functionbased product create view: ", instance)
+            print(
+                "serializer.data from functionbased product create view: ", serializer.data)
+
+            # echoing/sending back the created data to the user
+            return Response(serializer.data)
+
+// In urls.py:
+
+from django.urls import path
+from .views import ProductDetailAPIView, ProductListCreateAPIView, product_alt_view
+
+urlpatterns = [
+    path('', product_alt_view),
+    path('<int:pk>/', product_alt_view),
+]
+
+
+// serializers.py:
+from rest_framework import serializers
+from .models import Product
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    my_discount = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            'title',
+            'content',
+            'price',
+            'sale_price',
+            'my_discount'
+        ]
+
+    def get_my_discount(self, obj):
+        if not hasattr(obj, 'id'):
+            return None
+        if not isinstance(obj, Product):
+            return None
+        return obj.get_discount()
+
+
+// In models.py:
+
+from django.db import models
+
+
+class Product(models.Model):
+    title = models.CharField(max_length=120)
+    content = models.TextField(blank=True, null=True)
+    price = models.DecimalField(max_digits=15, decimal_places=2, default=99.99)
+
+    @property
+    def sale_price(self):
+        return "%.2f" % (float(self.price) * 0.8)  # <--20% off
+
+    def get_discount(self):
+        return "get discount method called!"
+
+
+NOTE: due to my serializer I am easily able to get all these fiels in my response.
+
+fields = [
+            'title',
+            'content',
+            'price',
+            'sale_price',
+            'my_discount'
+        ]
+
+
+// In details.py:
+
+
+import requests
+
+endpoint = "http://localhost:8000/api/products/1"
+
+# response_data = requests.get(endpoint)
+
+response_data = requests.get(endpoint)
+
+
+print(response_data.json())
+
+
+# output:
+{'title': 'Product 1', 'content': 'This is my product 1 content', 'price': '12.00', 'sale_price': '9.60', 'my_discount': 'get discount method called!'}
+
+// In list.py:
+
+
+import requests
+
+endpoint = "http://localhost:8000/api/products/"
+
+response_data = requests.get(endpoint)
+
+print(response_data.json())
+
+
+# Output:
+[{'title': 'Product 1', 'content': 'This is my product 1 content', 'price': '12.00', 'sale_price': '9.60', 'my_discount': 'get discount method called!'}, {'title': 'Product 2', 'content': 'This is my product 2 content', 'price': '24.00', 'sale_price': '19.20', 'my_discount': 'get discount method called!'}, {'title': 'Product 3', 'content': 'This is my product 3 content', 'price': '32.00', 'sale_price': '25.60', 'my_discount': 'get discount method called!'}, {'title': 'POST Title', 'content': None, 'price': '99.99', 'sale_price': '79.99', 'my_discount': 'get discount method called!'}, {'title': 'NEw product', 'content': 'new content', 'price': '99.99', 'sale_price': '79.99', 'my_discount': 'get discount method called!'}, {'title': 'NEw product', 'content': 'new content', 'price': '99.99', 'sale_price': '79.99', 'my_discount': 'get discount method called!'}, {'title': 'NEw product', 'content': 'new content', 'price': '99.99', 'sale_price': '79.99', 'my_discount': 'get discount method called!'}, {'title': 'This is titlt that is created from the generics', 'content': None, 'price': '99.99', 'sale_price': '79.99', 'my_discount': 'get discount method called!'}, {'title': 'Product withou content. This will be the content too', 'content': 'Product withou content. This will be the content too', 'price': '99.99', 'sale_price': '79.99', 'my_discount': 'get discount method called!'}, {'title': 'Product withou content. This will be the content too', 'content': 'Product withou content. This will be the content too', 'price': '99.99', 'sale_price': '79.99', 'my_discount': 'get discount method called!'}, {'title': 'Product withou content. This will be the content too', 'content': 'Product withou content. This will be the content too', 'price': '99.99', 'sale_price': '79.99', 'my_discount': 'get discount method called!'}]
+
+
+// In create.py:
+import requests
+
+endpoint = "http://localhost:8000/api/products/"
+
+# response_data = requests.get(endpoint)
+data = {
+    "title": "Product withou content. This will be the content too"
+}
+response_data = requests.post(endpoint, json=data)
+
+
+print(response_data.json())
+
+
+# Output:
+{'title': 'Product withou content. This will be the content too', 'content': 'Product withou content. This will be the content too', 'price': '99.99', 'sale_price': '79.99', 'my_discount': 'get discount method called!'}
 
 
 
