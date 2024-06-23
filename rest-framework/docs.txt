@@ -1,0 +1,566 @@
+*****************Django REST FRAMEWORK
+
+create and active venv:
+
+virtualenv python3 -p venv
+
+// In requirements.txt:
+django==5.0.6
+djangorestframework
+pyyaml
+requests
+django-cors-headers
+
+
+> pip install -r requirements.txt
+
+
+create two folders
+1- backend
+2- py_clients for consuming the APIS
+
+>  django-admin startproject cfehome ./backend
+
+
+// In pyclients/basics.py
+
+import requests
+
+endpoint = "https://httpbin.org/"
+endpoint2 = "https://httpbin.org/anything"
+
+response_data = requests.get(endpoint)
+print(response_data.text)  # this will return an html page which we can use for web scrapping also.
+
+
+
+response_data2 = requests.get(endpoint2)
+print(response_data2.text) # this will return a json response
+#output:
+{
+  "args": {}, 
+  "data": "", 
+  "files": {}, 
+  "form": {}, 
+  "headers": {
+    "Accept": "*/*", 
+    "Accept-Encoding": "gzip, deflate", 
+    "Host": "httpbin.org", 
+    "User-Agent": "python-requests/2.32.3", 
+    "X-Amzn-Trace-Id": "Root=1-66767651-50bfdbd4290950725b1f9158"
+  }, 
+  "json": null, 
+  "method": "GET", 
+  "origin": "111.68.99.92", 
+  "url": "https://httpbin.org/anything"
+}
+
+
+
+response_data3 = requests.get(endpoint2, json={"query": "Hello world"})
+print(response_data2.text) # this will return a json response returning back the providing json
+
+# output:
+{
+  "args": {}, 
+  "data": "{\"query\": \"Hello world\"}", 
+  "files": {}, 
+  "form": {}, 
+  "headers": {
+    "Accept": "*/*", 
+    "Accept-Encoding": "gzip, deflate", 
+    "Content-Length": "24", 
+    "Content-Type": "application/json", 
+    "Host": "httpbin.org", 
+    "User-Agent": "python-requests/2.32.3", 
+    "X-Amzn-Trace-Id": "Root=1-66767750-0ae31e3b5f20b4011284ef88"
+  }, 
+  "json": {
+    "query": "Hello world"
+  }, 
+  "method": "GET", 
+  "origin": "111.68.99.92", 
+  "url": "https://httpbin.org/anything"
+}
+
+
+NOTE: Json and python dictionaries are almost same
+
+
+// REST API you will get JSON
+// HTTP API you will get HTML
+
+
+*************Creating our First REST API:
+
+// In views.js of api app:
+
+from django.http import JsonResponse
+
+
+def api_home(request, *args, **kwargs):
+    return JsonResponse({"message": "Hey this is my first home api"})
+
+
+// In urls/py of api app:
+from django.urls import path
+# from .views import api_home
+from . import views
+urlpatterns = [
+    path('', views.api_home)
+]
+
+
+// In urls.py of root app:
+
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('api.urls')),
+]
+
+
+
+// In basics.py:
+import requests
+
+endpoint = "http://localhost:8000/api/"
+
+# response_data = requests.get(endpoint, json={"query": "Hello world"})
+response_data = requests.get(endpoint)
+print(response_data.text)
+
+# output:
+{"message": "Hey this is my first home api"}
+
+
+
+**************Getting back the data that is send from the frontend
+
+// in basics.py
+import requests
+
+
+# endpoint = "https://httpbin.org/"
+# endpoint = "https://httpbin.org/anything"
+endpoint = "http://localhost:8000/api/"
+
+response_data = requests.get(endpoint, params={"abc": 123}, json={
+                             "query": "Hello world"})
+
+print(response_data.text)
+
+#here params are query params http://localhost:8000/api/?abc=123
+
+// how to get this json data and query parameters on backend and send it back to the fronend?
+
+
+// In views.py of api app:
+from django.http import JsonResponse
+import json
+
+def api_home(request, *args, **kwargs):
+    body = request.body
+    print(request.GET) #<--Getting the query params
+    data = {}
+    try:
+        data = json.loads(body)  # JSON string --> python dictionary
+    except:
+        pass
+    print(data)
+    return JsonResponse(data)
+    
+    
+***********Sending Django model instance as an API response to the client:
+
+created new app called products
+
+// Im models.py
+from django.db import models
+
+class Product(models.Model):
+    title = models.CharField(max_length=120)
+    content = models.TextField(blank=True, null=True)
+    price = models.DecimalField(max_digits=15, decimal_places=2, default=99.99)
+
+
+// In views.py
+from django.http import JsonResponse
+from products.models import Product
+
+
+def api_home(request, *args, **kwargs):
+    model_data = Product.objects.all().order_by("?").first()
+    data = {}
+    if model_data:
+        # below we are converting our model instance into Python dictionary
+        data['id'] = model_data.id
+        data['title'] = model_data.title
+        data['content'] = model_data.content
+        data['price'] = model_data.price
+    return JsonResponse(data)
+
+    
+// In basics.py:
+import requests
+
+endpoint = "http://localhost:8000/api/"
+
+response_data = requests.get(endpoint)
+
+print(response_data.json())
+
+
+
+NOTE: IN views.py you have noticed that there is serialization (converting model instance into python dictionary format and then sending the response in JSON form this is quite hectic process to do)
+There should be a way to convert model instance into pyton dictionary. Here is how you can do that:
+
+
+from django.http import JsonResponse
+from products.models import Product
+from django.forms.models import model_to_dict
+
+
+def api_home(request, *args, **kwargs):
+    model_data = Product.objects.all().order_by("?").first()
+    data = {}
+    if model_data:
+        # below we are converting our model instance into Python dictionary
+	data = model_to_dict(model_data, fields=['id', 'title', 'content', 'price'])  #<--using this model_to_dict builtin method
+    return JsonResponse(data)
+
+// here in model_to_dict method we can specify that which fields we want to convert
+
+
+
+*********PROBLEM with Pure Django
+1) One problem of manually converting model instance into python dictionary and the converting it into the JSON 
+2) second problem will come when we will about to send HttpResponse instead of JsonResponse as HttpResponse accepts text/html we have to update the headers manually. 
+3) If you perform any action on any of your field in model serializer and want to show that field in your response you wont be able to see that. let me show you what I meant.
+
+//In models.py of product app:
+from django.db import models
+
+
+class Product(models.Model):
+    title = models.CharField(max_length=120)
+    content = models.TextField(blank=True, null=True)
+    price = models.DecimalField(max_digits=15, decimal_places=2, default=99.99)
+
+# Adding attribute to get 20 percent off
+    @property
+    def sale_price(self):
+        return "%.2f" %(float(self.price) * 0.8)  # <--20% off
+
+
+// In views.py:
+from products.models import Product
+from django.forms.models import model_to_dict
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+
+@api_view(["GET"])  # <-- here you can define the list of allowed methods
+def api_home(request, *args, **kwargs):
+    model_data = Product.objects.all().order_by("?").first()
+    data = {}
+    if model_data:
+        # below we are converting our model instance into Python dictionary
+        data = model_to_dict(model_data, fields=[
+                             'id', 'title', 'content', 'price', 'sale_price']) #<-- here I have added to see the sale_price field
+    return Response(data)
+
+# output:
+{'id': 1, 'title': 'Product 1', 'content': 'This is my product 1 content', 'price': 12.0} 
+
+Here you can see that sale_price field is missing. Here we have to do it manually. This is also a problem.
+
+
+This was about the getting data. There will be more problems when we will POSTing data. We will have to manually manage the serialization stuff.
+
+
+
+***************Converting django api view to Rest framework view
+from products.models import Product
+from django.forms.models import model_to_dict
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+
+@api_view(["GET"])  # <-- here you can define the list of allowed methods
+def api_home(request, *args, **kwargs):
+    model_data = Product.objects.all().order_by("?").first()
+    data = {}
+    if model_data:
+        # below we are converting our model instance into Python dictionary
+        data = model_to_dict(model_data, fields=[
+                             'id', 'title', 'content', 'price'])
+    return Response(data)
+    
+*******************Django Rest framework model serializer:
+// In models.py
+from django.db import models
+
+class Product(models.Model):
+    title = models.CharField(max_length=120)
+    content = models.TextField(blank=True, null=True)
+    price = models.DecimalField(max_digits=15, decimal_places=2, default=99.99)
+
+    @property
+    def sale_price(self):
+        return "%.2f" % (float(self.price) * 0.8)  # <--20% off
+
+    def get_discount(self):
+        return "get discount method called!"
+
+
+// In serializers.py:
+from rest_framework import serializers
+from .models import Product
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model= Product
+        fields = [
+            'title',
+            'content',
+            'price',
+            'sale_price',  #<--here sale_pice is a method which I am adding into the data as a field
+            'get_discount' #<--here get_discount is a method which I am adding into the data as a field
+        ]
+
+
+// In views.py
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from products.serializers import ProductSerializer
+from products.models import Product
+
+
+@api_view(["GET"])  # <-- here you can define the list of allowed methods
+def api_home(request, *args, **kwargs):
+    instance = Product.objects.all().order_by("?").first()
+    data = {}
+    if instance:
+        data = ProductSerializer(instance).data
+    return Response(data)
+    
+    
+    
+// basics.py (frontend)
+import requests
+
+
+# endpoint = "https://httpbin.org/"
+# endpoint = "https://httpbin.org/anything"
+endpoint = "http://localhost:8000/api/"
+
+response_data = requests.get(endpoint)
+
+print(response_data.json())
+
+# here params are query params http://localhost:8000/api/?abc=123
+
+
+#output:
+
+{'title': 'Product 1', 'content': 'This is my product 1 content', 'price': '12.00', 'sale_price': '9.60', 'get_discount': 'get discount method called!'}
+
+
+
+************If you want to have custom name of the method in your serializers:
+
+from rest_framework import serializers
+from .models import Product
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    my_discount = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            'title',
+            'content',
+            'price',
+            'sale_price',
+            'my_discount'  #original name of method is "get_discount"
+        ]
+
+    def get_my_discount(self, obj): 
+        print(obj.title)
+        # here my obj will contain the data of the instance that is being calling.
+        return obj.get_discount()
+
+
+ Note: #here you just have to get_ before your custom name. You can think serializers as the function can change the data type for you. You mostly call them in your views where you handle your logic stuff. You can also have multiple serializers for your app, Which you can call accordingy in your views,
+ 
+ 
+
+***************Making post request and understanding the behaviour of Serializer:
+// In my views.py
+
+@api_view(["POST"])  # <-- here you can define the list of allowed methods
+def api_home(request, *args, **kwargs):
+    serializer = ProductSerializer(data=request.data)
+
+    if serializer.is_valid():
+        print("serializer.data: ", serializer.data)
+        return Response(serializer.data)
+    return Response({"invalid": "not good data"}, status=400)
+    
+    
+// In models.py:
+
+from django.db import models
+
+
+class Product(models.Model):
+    title = models.CharField(max_length=120)
+    content = models.TextField(blank=True, null=True)
+    price = models.DecimalField(max_digits=15, decimal_places=2, default=99.99)
+
+    @property
+    def sale_price(self):
+        return "%.2f" % (float(self.price) * 0.8)  # <--20% off
+
+    def get_discount(self):
+        return "get discount method called!"
+
+    
+// In serializer.py:
+
+from rest_framework import serializers
+from .models import Product
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    my_discount = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            'title',
+            'content',
+            'price',
+            'sale_price',
+            'my_discount'
+        ]
+in get_my_discount
+    def get_my_discount(self, obj):
+        print(obj.title)
+        # here my obj will contain the data that is coming from the instance and we can performs operations on it.
+        return obj.get_discount()
+
+
+// In basics.py:
+
+import requests
+
+endpoint = "http://localhost:8000/api/"
+
+response_data = requests.post(endpoint, json={"title": "POST Title"})
+
+print(response_data.json())
+
+
+
+#OUTPUT:
+Here you will get error:
+AttributeError: 'dict' object has no attribute 'title' in get_my_discount
+
+
+Here the reason is that the data posting from the front end do not even know about the model. Its only going through the serializer. So we have to let the serializer know about the our model . One way to get rid of this error is that addition exceptions in our method of Product model in serializer as follow:
+// In serializer.py
+from rest_framework import serializers
+from .models import Product
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    my_discount = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            'title',
+            'content',
+            'price',
+            'sale_price',
+            'my_discount'
+        ]
+
+    def get_my_discount(self, obj):
+        if not hasattr(obj, 'id'):    #<--adding exceptions
+            return None
+        if not isinstance(obj, Product): #<--adding exceptions
+            return None
+        return obj.get_discount()
+
+# Output:
+{'title': 'POST Title', 'content': None, 'my_discount': None}
+
+
+Now the output is still not as expected. We have some fields like sale_price, 'my_discount' and default value of our price.
+The reason is again same that our data is only passing from serializers not from our model. We have to let our serializer know about our model by saving the data in our model which will create and instance and that instance will automatically let our serializer know about model so then the data will pass through the serializer and our model. And we will not get the error. We can do it as follow:
+
+// In views.py:
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from products.serializers import ProductSerializer
+from products.models import Product
+
+# POST request
+@api_view(["POST"])  # <-- here you can define the list of allowed methods
+def api_home(request, *args, **kwargs):
+    serializer = ProductSerializer(data=request.data)
+
+    if serializer.is_valid(raise_exception=True): #here raise_exception=True is just for saving a good error info
+        instance = serializer.save()  #<-- here we are saving our data in the backend and instance has been created.
+        print("Instance: ", instance)
+        print("serializer.data: ", serializer.data)
+        return Response(serializer.data)
+    return Response({"invalid": "not good data"}, status=400)
+
+
+NOTE: Here now the data will pass through the serializer and it will be valid there and then it will be pass through the model where it will valid again accoding to our model fields and then serilizaer will contain the data from the instance. Which is right.
+
+
+
+*************Other cases:
+// In basics.py
+
+import requests
+
+endpoint = "http://localhost:8000/api/"
+
+response_data = requests.post(endpoint, json={"title": None, "content":"new content"})
+
+print(response_data.json())
+
+# here sending title as none which is invalid
+
+#output:
+
+Bad Request: /api/
+{'title': ['This field may not be null.']}
+
+This is prove that our data is passing through the model and its validating there.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
